@@ -181,10 +181,6 @@ canvas {
 	pointer-events: none;
 }
 
-.map-canvas .maplibregl-canvas {
-	filter: grayscale(0.15) saturate(0.78) brightness(0.88);
-}
-
 .map-compare__frame.is-static [data-compare-before] {
 	clip-path: inset(0 50% 0 0);
 }
@@ -328,6 +324,61 @@ canvas {
 	line-height: 1.45;
 }
 
+.maplibregl-popup.region-popup .maplibregl-popup-content {
+	padding: 0.85rem 0.95rem;
+	background: #111111;
+	border: 1px solid var(--color-border-strong);
+	border-radius: 0.85rem;
+	box-shadow: 0 14px 32px #00000066;
+	color: var(--color-text);
+	font-family: Georgia, 'Times New Roman', serif;
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+	border-top-color: #111111;
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+	border-bottom-color: #111111;
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+	border-left-color: #111111;
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+	border-right-color: #111111;
+}
+
+.region-popup__content {
+	min-width: 13rem;
+}
+
+.region-popup__title {
+	margin: 0 0 0.55rem;
+	font-size: 1rem;
+	line-height: 1.15;
+	color: var(--color-text);
+}
+
+.region-popup__row {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	margin: 0.25rem 0 0;
+	font-size: 0.92rem;
+	color: var(--color-muted);
+}
+
+.region-popup__row strong {
+	color: var(--color-text);
+	font-weight: 600;
+}
+
 .story__steps {
 	min-width: 0;
 	padding-top: 14vh;
@@ -452,6 +503,19 @@ canvas {
 	.data-panel__swatch {
 		background: CanvasText;
 		border-color: ButtonBorder;
+	}
+
+	.maplibregl-popup.region-popup .maplibregl-popup-content {
+		background: Canvas;
+		border-color: ButtonBorder;
+		box-shadow: none;
+		color: CanvasText;
+	}
+
+	.region-popup__row,
+	.region-popup__row strong,
+	.region-popup__title {
+		color: CanvasText;
 	}
 
 	:focus-visible {

@@ -5,60 +5,71 @@ import regionsUrl from '../data/regions.geojson?url';
 
 const baseStyleUrl = 'https://demotiles.maplibre.org/style.json';
 const germanyCenter = [10.4515, 51.1657];
+const defaultZoom = 5;
+const noDataFill = '#333333';
+const lightFill = '#f7f7f7';
+const accentFill = '#e63946';
+const outlineFill = '#181818';
+const questionFill = '#4b4b4b';
+const questionOpacity = 0.34;
+const hoverBoundMaps = new WeakSet();
+const percentFormatter = new Intl.NumberFormat('en-GB', {
+	maximumFractionDigits: 2,
+	minimumFractionDigits: 2,
+});
 
-const modernRamp = d3.quantize(
-	d3.interpolateRgbBasis(['#170d0f', '#4d1d22', '#80252e', '#b42f3c', '#e63946']),
-	5,
-);
-const archivalRamp = d3.quantize(
-	d3.interpolateRgbBasis(['#111111', '#3c2822', '#674034', '#95614c', '#c48760']),
-	5,
-);
-const neutralRamp = d3.quantize(
-	d3.interpolateRgbBasis(['#121212', '#232323', '#343434', '#454545', '#585858']),
-	5,
-);
+const whiteToRedRamp = d3.quantize(d3.interpolateRgb(lightFill, accentFill), 5);
+const neutralRamp = d3.quantize(d3.interpolateRgb('#1f1f1f', '#676767'), 5);
 
 const scenes = [
 	{
 		title: 'Germany. Today.',
-		description: 'Placeholder contemporary choropleth scaffold tied to the modern timeline.',
-		legend: modernRamp,
-		fill: buildFillExpression('placeholder_modern', modernRamp),
-		opacity: 0.76,
-		camera: { center: germanyCenter, zoom: 4.85 },
+		description: 'Regions are coloured by AfD vote share in 2025. Grey districts are missing a reported value.',
+		legend: whiteToRedRamp,
+		fill: buildChoroplethExpression('afd_pct', 30),
+		opacity: 0.92,
+		lineColor: outlineFill,
+		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
 		title: 'Has it always been like this?',
 		description: 'The question scene softens the map and holds the pause before the historical jump.',
 		legend: neutralRamp,
-		fill: neutralRamp[2],
-		opacity: 0.28,
-		camera: { center: [10.4515, 51.3], zoom: 4.55 },
+		fill: questionFill,
+		opacity: questionOpacity,
+		lineColor: outlineFill,
+		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
 		title: 'Germany. 1933.',
-		description: 'Placeholder archival shading reserves space for the historical vote-share layer.',
-		legend: archivalRamp,
-		fill: buildFillExpression('placeholder_historic', archivalRamp),
-		opacity: 0.82,
-		camera: { center: [10.15, 51.05], zoom: 4.95 },
+		description: 'The same districts shift to NSDAP vote share in March 1933, using the full 0 to 100 percent range.',
+		legend: whiteToRedRamp,
+		fill: buildChoroplethExpression('nsdap_pct', 100),
+		opacity: 0.92,
+		lineColor: '#241816',
+		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
 		title: 'Then and now.',
-		description: 'A split placeholder readies the 1933 versus 2025 comparison scene.',
-		legend: modernRamp,
-		fill: buildFillExpression('placeholder_modern', modernRamp),
-		opacity: 0.8,
-		camera: { center: germanyCenter, zoom: 4.85 },
+		description: 'Use the slider to compare the historical and current regional pattern directly.',
+		legend: whiteToRedRamp,
+		fill: buildChoroplethExpression('afd_pct', 30),
+		opacity: 0.92,
+		lineColor: outlineFill,
+		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
 		title: "Some things change. Some things don't.",
-		description: 'The final scene resolves into a full-country view for the merged regional story.',
-		legend: modernRamp,
-		fill: modernRamp[4],
-		opacity: 0.88,
-		camera: { center: germanyCenter, zoom: 4.7 },
+		description: 'The outro shows the absolute gap between the normalised 1933 and 2025 shares across the whole country.',
+		legend: whiteToRedRamp,
+		fill: buildChoroplethExpression('normalized_gap', 1),
+		opacity: 0.92,
+		lineColor: outlineFill,
+		view: {
+			type: 'fitBounds',
+			maxZoom: 4.65,
+			padding: { top: 64, right: 72, bottom: 220, left: 72 },
+		},
 	},
 ];
 
@@ -84,6 +95,7 @@ let activeSceneIndex = -1;
 let pendingSceneIndex = 0;
 let regionsData = { type: 'FeatureCollection', features: [] };
 let compareConstructorPromise;
+let regionsBounds = null;
 
 if (
 	primaryShell &&
@@ -182,18 +194,25 @@ function updatePanel(stepIndex) {
 }
 
 function createMap(container) {
-	return new maplibregl.Map({
+	const map = new maplibregl.Map({
 		attributionControl: false,
 		center: germanyCenter,
 		container,
-		interactive: false,
+		interactive: true,
 		renderWorldCopies: false,
 		style: baseStyleUrl,
-		zoom: 4.8,
+		zoom: defaultZoom,
 	});
+
+	configureMapInteractions(map);
+	return map;
 }
 
 function addRegionsLayers(map) {
+	const labelLayerId = map
+		.getStyle()
+		.layers?.find((layer) => layer.type === 'symbol' && layer.layout?.['text-field'])?.id;
+
 	if (!map.getSource('regions')) {
 		map.addSource('regions', {
 			type: 'geojson',
@@ -207,10 +226,12 @@ function addRegionsLayers(map) {
 			type: 'fill',
 			source: 'regions',
 			paint: {
-				'fill-color': neutralRamp[2],
-				'fill-opacity': 0.3,
+				'fill-color': scenes[0].fill,
+				'fill-color-transition': { duration: 950, delay: 0 },
+				'fill-opacity': scenes[0].opacity,
+				'fill-opacity-transition': { duration: 950, delay: 0 },
 			},
-		});
+		}, labelLayerId);
 	}
 
 	if (!map.getLayer('regions-outline')) {
@@ -219,11 +240,15 @@ function addRegionsLayers(map) {
 			type: 'line',
 			source: 'regions',
 			paint: {
-				'line-color': '#181818',
+				'line-color': scenes[0].lineColor,
+				'line-color-transition': { duration: 950, delay: 0 },
+				'line-opacity': 0.78,
 				'line-width': 0.8,
 			},
-		});
+		}, labelLayerId);
 	}
+
+	attachHoverInteractions(map);
 }
 
 function applySceneToMap(map, scene) {
@@ -234,15 +259,30 @@ function applySceneToMap(map, scene) {
 	map.setPaintProperty('regions-fill', 'fill-color', scene.fill);
 	map.setPaintProperty('regions-fill', 'fill-opacity', scene.opacity);
 	map.setPaintProperty('regions-outline', 'line-color', stepOutlineColour(scene));
-	map.flyTo({
-		...scene.camera,
-		duration: 1800,
-		essential: true,
-	});
+	applySceneView(map, scene);
 }
 
 function stepOutlineColour(scene) {
-	return scene === scenes[2] ? '#241816' : '#181818';
+	return scene.lineColor ?? outlineFill;
+}
+
+function applySceneView(map, scene) {
+	if (scene.view?.type === 'fitBounds' && regionsBounds) {
+		map.fitBounds(regionsBounds, {
+			maxZoom: scene.view.maxZoom,
+			padding: scene.view.padding,
+			duration: 1800,
+			essential: true,
+		});
+		return;
+	}
+
+	map.flyTo({
+		center: scene.view?.center ?? germanyCenter,
+		zoom: scene.view?.zoom ?? defaultZoom,
+		duration: 1800,
+		essential: true,
+	});
 }
 
 async function activateCompareScene() {
@@ -250,6 +290,8 @@ async function activateCompareScene() {
 	compareShell.classList.remove('is-hidden');
 	compareShell.setAttribute('aria-hidden', 'false');
 	await ensureCompareMaps();
+	applySceneToMap(compareBeforeMap, scenes[2]);
+	applySceneToMap(compareAfterMap, scenes[0]);
 	compareBeforeMap.resize();
 	compareAfterMap.resize();
 	const isEnhanced = await ensureCompareControl();
@@ -341,6 +383,52 @@ function loadCompareScript(source) {
 	});
 }
 
+function configureMapInteractions(map) {
+	map.boxZoom.disable();
+	map.doubleClickZoom.disable();
+	map.dragPan.disable();
+	map.dragRotate.disable();
+	map.keyboard.disable();
+	map.scrollZoom.disable();
+	map.touchZoomRotate.disable();
+}
+
+function attachHoverInteractions(map) {
+	if (hoverBoundMaps.has(map)) {
+		return;
+	}
+
+	hoverBoundMaps.add(map);
+	const popup = new maplibregl.Popup({
+		className: 'region-popup',
+		closeButton: false,
+		closeOnClick: false,
+		maxWidth: '18rem',
+		offset: 16,
+	});
+
+	map.on('mouseenter', 'regions-fill', () => {
+		map.getCanvas().style.cursor = 'pointer';
+	});
+
+	map.on('mousemove', 'regions-fill', (event) => {
+		const feature = event.features?.[0];
+		if (!feature) {
+			return;
+		}
+
+		popup
+			.setLngLat(event.lngLat)
+			.setHTML(renderPopupHtml(feature.properties ?? {}))
+			.addTo(map);
+	});
+
+	map.on('mouseleave', 'regions-fill', () => {
+		map.getCanvas().style.cursor = '';
+		popup.remove();
+	});
+}
+
 function handleResize() {
 	primaryMap?.resize();
 	compareBeforeMap?.resize();
@@ -380,6 +468,8 @@ async function loadRegions() {
 			throw new Error('GeoJSON placeholder must be a FeatureCollection.');
 		}
 
+		prepareRegionsData(data);
+		regionsBounds = computeGeoBounds(data);
 		return data;
 	} catch (error) {
 		console.warn('Using empty placeholder regions.', error);
@@ -387,20 +477,85 @@ async function loadRegions() {
 	}
 }
 
-function buildFillExpression(property, ramp) {
+
+function prepareRegionsData(data) {
+	for (const feature of data.features) {
+		feature.properties ??= {};
+		feature.properties.normalized_gap = calculateNormalizedGap(
+			feature.properties.nsdap_pct,
+			feature.properties.afd_pct,
+		);
+	}
+}
+
+// The outro uses the magnitude of the gap after both election shares are normalised to their scene ranges.
+function calculateNormalizedGap(nsdapPct, afdPct) {
+	if (typeof nsdapPct !== 'number' || typeof afdPct !== 'number') {
+		return null;
+	}
+
+	const normalisedHistoric = clamp(nsdapPct / 100, 0, 1);
+	const normalisedModern = clamp(afdPct / 30, 0, 1);
+	return Math.abs(normalisedHistoric - normalisedModern);
+}
+
+function computeGeoBounds(data) {
+	if (!data.features.length) {
+		return null;
+	}
+
+	const [[west, south], [east, north]] = d3.geoBounds(data);
 	return [
-		'interpolate',
-		['linear'],
-		['coalesce', ['get', property], 0],
-		0,
-		ramp[0],
-		0.25,
-		ramp[1],
-		0.5,
-		ramp[2],
-		0.75,
-		ramp[3],
-		1,
-		ramp[4],
+		[west, south],
+		[east, north],
 	];
+}
+
+function buildChoroplethExpression(property, maxValue) {
+	return [
+		'case',
+		['==', ['get', property], null],
+		noDataFill,
+		[
+			'interpolate',
+			['linear'],
+			['max', 0, ['min', ['get', property], maxValue]],
+			0,
+			lightFill,
+			maxValue,
+			accentFill,
+		],
+	];
+}
+
+function renderPopupHtml(properties) {
+	const regionName = typeof properties.GEN === 'string' ? properties.GEN : 'Unknown region';
+	return `
+		<div class="region-popup__content">
+			<p class="region-popup__title">${escapeHtml(regionName)}</p>
+			<p class="region-popup__row"><span>NSDAP 1933</span><strong>${formatPercentage(properties.nsdap_pct)}</strong></p>
+			<p class="region-popup__row"><span>AfD 2025</span><strong>${formatPercentage(properties.afd_pct)}</strong></p>
+		</div>
+	`;
+}
+
+function formatPercentage(value) {
+	if (typeof value !== 'number' || Number.isNaN(value)) {
+		return 'No data';
+	}
+
+	return `${percentFormatter.format(value)}%`;
+}
+
+function escapeHtml(value) {
+	return String(value)
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
+}
+
+function clamp(value, min, max) {
+	return Math.min(Math.max(value, min), max);
 }
