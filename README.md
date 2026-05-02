@@ -1,43 +1,37 @@
-# Astro Starter Kit: Minimal
+# Same Place
 
-```sh
-pnpm create astro@latest -- --template minimal
-```
+An interactive data visualization mapping 90 years of far-right 
+support in Germany — from Nazi vote share in 1933 to today.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Data Sources
 
-## 🚀 Project Structure
+- NSDAP election results 1933: GESIS — Leibniz Institute for 
+  the Social Sciences
+- AfD election results 2025: Federal Returning Officer 
+  (Bundeswahlleiter)
+- Right-wing incidents: Amadeu Antonio Foundation + 
+  Federal Criminal Police Office (BKA)
 
-Inside of your Astro project, you'll see the following folders and files:
+## Methodology
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+Regional boundaries have shifted significantly since 1933. 
+We aggregate data to modern Kreise (districts) using the 
+mapping approach from Voigtländer & Voth (2012), 
+"Persecutions of Jews and Nazi Violence".
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Academic References
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- Voigtländer, N., & Voth, H. J. (2012). Persecution perpetuated.
+- Cantoni, D. et al. (2019). Persistence and Activation of 
+  Right-Wing Political Ideology.
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Built With
 
-## 🧞 Commands
+- Astro
+- MapLibre GL JS
+- D3.js
+- Turf.js
 
-All commands are run from the root of the project, from a terminal:
+## License
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+MIT — data sources retain their own licenses.
