@@ -23,6 +23,9 @@ importers:
       maplibre-gl:
         specifier: ^5.24.0
         version: 5.24.0
+      scrollama:
+        specifier: ^3.2.0
+        version: 3.2.0
 
 packages:
 
@@ -1836,6 +1839,9 @@ packages:
   sax@1.6.0:
     resolution: {integrity: sha512-6R3J5M4AcbtLUdZmRv2SygeVaM7IhrLXu9BmnOGmmACak8fiUtOsYNWUS4uK7upbmHIBbLBeFeI//477BKLBzA==}
     engines: {node: '>=11.0.0'}
+
+  scrollama@3.2.0:
+    resolution: {integrity: sha512-PIPwB1kYBnbw/ezvPBJa5dCN5qEwokfpAkI3BmpZWAwcVID4nDf1qH6WV16A2fQaJmsKx0un5S/zhxN+PQeKDQ==}
 
   semver@7.7.4:
     resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
@@ -4961,6 +4967,8 @@ snapshots:
   safer-buffer@2.1.2: {}
 
   sax@1.6.0: {}
+
+  scrollama@3.2.0: {}
 
   semver@7.7.4: {}
 

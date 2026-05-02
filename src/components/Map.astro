@@ -14,16 +14,14 @@ import scrollytellingUrl from '../scripts/scrollytelling.js?url';
 				<div class="map-compare__frame is-static" data-comparison-container>
 					<div class="map-canvas map-canvas--compare" data-compare-before></div>
 					<div class="map-canvas map-canvas--compare" data-compare-after></div>
-					<span class="map-compare__label map-compare__label--before">1933</span>
-					<span class="map-compare__label map-compare__label--after">2025</span>
 				</div>
-				<p class="map-compare__fallback" data-compare-fallback>
-					Static split placeholder. The official slider enhances this view when the compare plugin is reachable.
+				<p class="map-compare__fallback" data-compare-fallback hidden>
+					Compare slider unavailable in this session.
 				</p>
 			</div>
-
-			<p class="map-status" data-map-status hidden></p>
 		</div>
+
+		<p class="map-status" data-map-status hidden></p>
 
 		<DataPanel />
 	</div>

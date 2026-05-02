@@ -1,15 +1,17 @@
-<section class="data-panel" aria-live="polite" aria-atomic="true" data-panel>
-	<p class="data-panel__meta">Scene <span data-panel-step>1</span> of 5</p>
-	<h3 class="data-panel__title" data-panel-title>Germany. Today.</h3>
-	<p class="data-panel__copy" data-panel-copy>
-		Regions are coloured by AfD vote share in 2025. Grey districts are missing a reported value.
+<section class="scene-overlay" aria-live="polite" aria-atomic="true" data-scene-overlay data-layout="corner" hidden>
+	<h2 class="scene-overlay__title">
+		<span class="scene-overlay__line" data-scene-title-line-1>Germany. Today.</span>
+		<span class="scene-overlay__line scene-overlay__line--accent" data-scene-title-line-2 hidden></span>
+	</h2>
+	<p class="scene-overlay__body" data-scene-body>
+		AfD vote share by district, federal election 2025.
 	</p>
-	<div class="data-panel__legend" aria-hidden="true">
-		<span class="data-panel__swatch"></span>
-		<span class="data-panel__swatch"></span>
-		<span class="data-panel__swatch"></span>
-		<span class="data-panel__swatch"></span>
-		<span class="data-panel__swatch"></span>
-	</div>
-	<p class="data-panel__note">Grey indicates missing data. Hover a region to inspect its historical and current values.</p>
+</section>
+
+<section class="scene-legend" data-scene-legend hidden aria-hidden="true">
+	<div class="scene-legend__bar"></div>
+	<p class="scene-legend__labels">
+		<span>Low</span>
+		<span>High</span>
+	</p>
 </section>

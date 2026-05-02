@@ -10,7 +10,8 @@ const headingId = `step-title-${index}`;
 ---
 
 <article class="step" data-step={index} aria-labelledby={headingId}>
-	<p class="step__eyebrow">Scene {index + 1}</p>
-	<h2 class="step__title" id={headingId}>{title}</h2>
-	{body && <p class="step__body">{body}</p>}
+	<div class="sr-only">
+		<h2 id={headingId}>{title}</h2>
+		{body && <p>{body}</p>}
+	</div>
 </article>

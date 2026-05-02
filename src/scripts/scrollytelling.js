@@ -1,75 +1,78 @@
 import * as d3 from 'd3';
+import scrollama from 'scrollama';
 import maplibregl from 'maplibre-gl';
 import compareBundleUrl from '@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.js?url';
 import regionsUrl from '../data/regions.geojson?url';
 
-const baseStyleUrl = 'https://demotiles.maplibre.org/style.json';
-const germanyCenter = [10.4515, 51.1657];
-const defaultZoom = 5;
-const noDataFill = '#333333';
+const baseStyleUrl = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const germanyCenter = [10.4515, 51.5];
+const defaultZoom = 6;
+const missingFill = '#1a1a1a';
 const lightFill = '#f7f7f7';
 const accentFill = '#e63946';
 const outlineFill = '#181818';
-const questionFill = '#4b4b4b';
-const questionOpacity = 0.34;
+const keptBasemapLabelLayerIds = new Set([
+	'place_country_1',
+	'place_country_2',
+	'place_city_dot_r2',
+	'place_city_dot_r4',
+	'place_capital_dot_z7',
+]);
 const hoverBoundMaps = new WeakSet();
 const percentFormatter = new Intl.NumberFormat('en-GB', {
 	maximumFractionDigits: 2,
 	minimumFractionDigits: 2,
 });
 
-const whiteToRedRamp = d3.quantize(d3.interpolateRgb(lightFill, accentFill), 5);
-const neutralRamp = d3.quantize(d3.interpolateRgb('#1f1f1f', '#676767'), 5);
-
 const scenes = [
 	{
-		title: 'Germany. Today.',
-		description: 'Regions are coloured by AfD vote share in 2025. Grey districts are missing a reported value.',
-		legend: whiteToRedRamp,
+		titleLines: ['Germany. Today.'],
+		body: 'AfD vote share by district, federal election 2025.',
+		layout: 'corner',
+		showLegend: true,
 		fill: buildChoroplethExpression('afd_pct', 30),
-		opacity: 0.92,
+		opacity: 0.94,
 		lineColor: outlineFill,
 		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
-		title: 'Has it always been like this?',
-		description: 'The question scene softens the map and holds the pause before the historical jump.',
-		legend: neutralRamp,
-		fill: questionFill,
-		opacity: questionOpacity,
+		titleLines: ['Has it always been like this?'],
+		layout: 'center',
+		overlayDelay: 500,
+		showLegend: false,
+		fill: buildChoroplethExpression('afd_pct', 30),
+		opacity: 0.94,
 		lineColor: outlineFill,
 		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
-		title: 'Germany. 1933.',
-		description: 'The same districts shift to NSDAP vote share in March 1933, using the full 0 to 100 percent range.',
-		legend: whiteToRedRamp,
-		fill: buildChoroplethExpression('nsdap_pct', 100),
-		opacity: 0.92,
+		titleLines: ['Germany. 1933.'],
+		body: 'NSDAP vote share by district, March election 1933.\nGrey districts have no comparable historical boundary.',
+		layout: 'corner',
+		showLegend: true,
+		fill: buildChoroplethExpression('nsdap_pct', 100, missingFill),
+		opacity: 0.94,
 		lineColor: '#241816',
 		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
-		title: 'Then and now.',
-		description: 'Use the slider to compare the historical and current regional pattern directly.',
-		legend: whiteToRedRamp,
+		titleLines: ['Then and now.'],
+		body: 'Drag to compare.',
+		layout: 'corner',
+		showLegend: true,
 		fill: buildChoroplethExpression('afd_pct', 30),
-		opacity: 0.92,
+		opacity: 0.94,
 		lineColor: outlineFill,
 		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 	{
-		title: "Some things change. Some things don't.",
-		description: 'The outro shows the absolute gap between the normalised 1933 and 2025 shares across the whole country.',
-		legend: whiteToRedRamp,
-		fill: buildChoroplethExpression('normalized_gap', 1),
-		opacity: 0.92,
+		titleLines: ['Some things change.', "Some things don't."],
+		layout: 'center-split',
+		showLegend: false,
+		fill: buildChoroplethExpression('correlation_score', 1),
+		opacity: 0.94,
 		lineColor: outlineFill,
-		view: {
-			type: 'fitBounds',
-			maxZoom: 4.65,
-			padding: { top: 64, right: 72, bottom: 220, left: 72 },
-		},
+		view: { type: 'flyTo', center: germanyCenter, zoom: defaultZoom },
 	},
 ];
 
@@ -81,10 +84,12 @@ const compareBeforeElement = document.querySelector('[data-compare-before]');
 const compareAfterElement = document.querySelector('[data-compare-after]');
 const compareFallback = document.querySelector('[data-compare-fallback]');
 const statusElement = document.querySelector('[data-map-status]');
-const panelElement = document.querySelector('[data-panel]');
-const panelStep = document.querySelector('[data-panel-step]');
-const panelTitle = document.querySelector('[data-panel-title]');
-const panelCopy = document.querySelector('[data-panel-copy]');
+const storyElement = document.querySelector('[data-story]');
+const sceneOverlayElement = document.querySelector('[data-scene-overlay]');
+const sceneTitleLineOne = document.querySelector('[data-scene-title-line-1]');
+const sceneTitleLineTwo = document.querySelector('[data-scene-title-line-2]');
+const sceneBody = document.querySelector('[data-scene-body]');
+const sceneLegend = document.querySelector('[data-scene-legend]');
 const stepElements = Array.from(document.querySelectorAll('.step'));
 
 let primaryMap;
@@ -96,6 +101,10 @@ let pendingSceneIndex = 0;
 let regionsData = { type: 'FeatureCollection', features: [] };
 let compareConstructorPromise;
 let regionsBounds = null;
+let scroller;
+let storyRevealObserver;
+let storyStarted = false;
+let sceneOverlayTimeout;
 
 if (
 	primaryShell &&
@@ -104,11 +113,15 @@ if (
 	comparisonContainer &&
 	compareBeforeElement &&
 	compareAfterElement &&
+	compareFallback &&
 	statusElement &&
-	panelElement &&
-	panelStep &&
-	panelTitle &&
-	panelCopy
+	storyElement &&
+	sceneOverlayElement &&
+	sceneTitleLineOne &&
+	sceneTitleLineTwo &&
+	sceneBody &&
+	sceneLegend &&
+	stepElements.length
 ) {
 	window.maplibregl = maplibregl;
 	void initialiseStory();
@@ -119,43 +132,95 @@ async function initialiseStory() {
 	primaryMap = createMap(primaryMapElement);
 	primaryMap.on('load', () => {
 		addRegionsLayers(primaryMap);
-		updateMap(pendingSceneIndex);
+		if (activeSceneIndex === 3) {
+			void activateCompareScene();
+			return;
+		}
+
+		applySceneToMap(primaryMap, scenes[activeSceneIndex === -1 ? 0 : activeSceneIndex]);
 	});
 	attachMapErrorHandler(primaryMap);
-	initialiseObserver();
+	initialiseScroller();
+	initialiseStoryReveal();
 	window.addEventListener('resize', handleResize, { passive: true });
 }
 
-function initialiseObserver() {
-	const observer = new IntersectionObserver(
+function initialiseScroller() {
+	scroller?.destroy();
+	scroller = scrollama();
+	scroller
+		.setup({
+			step: stepElements,
+			offset: 0.5,
+		})
+		.onStepEnter(({ element }) => {
+			const stepIndex = Number(element.getAttribute('data-step'));
+			void updateMap(stepIndex);
+		});
+}
+
+function initialiseStoryReveal() {
+	storyRevealObserver?.disconnect();
+	storyRevealObserver = new IntersectionObserver(
 		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-					const stepIndex = Number(entry.target.getAttribute('data-step'));
-					updateMap(stepIndex);
-				}
+			if (!entries.some((entry) => entry.isIntersecting)) {
+				return;
 			}
+
+			revealStory();
+			void updateMap(resolveActiveStepIndex());
+			storyRevealObserver?.disconnect();
 		},
-		{ threshold: 0.5 },
+		{ threshold: 0.12 },
 	);
 
-	for (const stepElement of stepElements) {
-		observer.observe(stepElement);
+	storyRevealObserver.observe(storyElement);
+}
+
+function revealStory() {
+	if (storyStarted) {
+		return;
 	}
 
-	updateStepState(0);
-	updatePanel(0);
+	storyStarted = true;
+	document.documentElement.classList.add('is-story-started');
+}
+
+function resolveActiveStepIndex() {
+	const triggerLine = window.innerHeight * 0.5;
+	let nearestStep = stepElements[0];
+	let nearestDistance = Number.POSITIVE_INFINITY;
+
+	for (const stepElement of stepElements) {
+		const rect = stepElement.getBoundingClientRect();
+		const midpoint = rect.top + rect.height * 0.5;
+		const distance = Math.abs(midpoint - triggerLine);
+
+		if (rect.top <= triggerLine && rect.bottom >= triggerLine) {
+			return Number(stepElement.getAttribute('data-step'));
+		}
+
+		if (distance < nearestDistance) {
+			nearestDistance = distance;
+			nearestStep = stepElement;
+		}
+	}
+
+	return Number(nearestStep.getAttribute('data-step'));
 }
 
 async function updateMap(stepIndex) {
 	pendingSceneIndex = stepIndex;
+	revealStory();
+
 	if (activeSceneIndex === stepIndex) {
 		return;
 	}
 
 	activeSceneIndex = stepIndex;
 	updateStepState(stepIndex);
-	updatePanel(stepIndex);
+	updateSceneOverlay(stepIndex);
+	updateSceneLegend(stepIndex);
 
 	if (!primaryMap || !primaryMap.isStyleLoaded()) {
 		return;
@@ -183,14 +248,60 @@ function updateStepState(stepIndex) {
 	}
 }
 
-function updatePanel(stepIndex) {
+function updateSceneOverlay(stepIndex) {
 	const scene = scenes[stepIndex];
-	panelStep.textContent = String(stepIndex + 1);
-	panelTitle.textContent = scene.title;
-	panelCopy.textContent = scene.description;
-	for (const [index, colour] of scene.legend.entries()) {
-		panelElement.style.setProperty(`--legend-${index}`, colour);
+	const hasVisibleOverlay =
+		!sceneOverlayElement.hidden && sceneOverlayElement.classList.contains('is-visible');
+
+	sceneOverlayElement.classList.remove('is-visible');
+	window.clearTimeout(sceneOverlayTimeout);
+
+	const fadeOutDuration = hasVisibleOverlay ? 400 : 0;
+	const sceneDelay = scene.overlayDelay ?? 0;
+
+	sceneOverlayTimeout = window.setTimeout(() => {
+		renderSceneOverlay(scene);
+		sceneOverlayElement.hidden = false;
+		requestAnimationFrame(() => {
+			sceneOverlayElement.classList.add('is-visible');
+		});
+	}, fadeOutDuration + sceneDelay);
+}
+
+function renderSceneOverlay(scene) {
+	sceneOverlayElement.dataset.layout = scene.layout ?? 'corner';
+	sceneTitleLineOne.textContent = scene.titleLines?.[0] ?? '';
+
+	if (scene.titleLines?.[1]) {
+		sceneTitleLineTwo.textContent = scene.titleLines[1];
+		sceneTitleLineTwo.hidden = false;
+	} else {
+		sceneTitleLineTwo.hidden = true;
+		sceneTitleLineTwo.textContent = '';
 	}
+
+	if (scene.body) {
+		sceneBody.hidden = false;
+		sceneBody.textContent = scene.body;
+	} else {
+		sceneBody.hidden = true;
+		sceneBody.textContent = '';
+	}
+}
+
+function updateSceneLegend(stepIndex) {
+	const shouldShowLegend = storyStarted && Boolean(scenes[stepIndex]?.showLegend);
+	sceneLegend.classList.remove('is-visible');
+
+	if (!shouldShowLegend) {
+		sceneLegend.hidden = true;
+		return;
+	}
+
+	sceneLegend.hidden = false;
+	requestAnimationFrame(() => {
+		sceneLegend.classList.add('is-visible');
+	});
 }
 
 function createMap(container) {
@@ -204,8 +315,29 @@ function createMap(container) {
 		zoom: defaultZoom,
 	});
 
+	map.on('load', () => {
+		configureBasemapLabels(map);
+	});
 	configureMapInteractions(map);
 	return map;
+}
+
+function configureBasemapLabels(map) {
+	for (const layer of map.getStyle().layers ?? []) {
+		if (layer.type !== 'symbol') {
+			continue;
+		}
+
+		if (!keptBasemapLabelLayerIds.has(layer.id)) {
+			map.setLayoutProperty(layer.id, 'visibility', 'none');
+			continue;
+		}
+
+		const isCountryLabel = layer.id.startsWith('place_country');
+		map.setPaintProperty(layer.id, 'text-color', isCountryLabel ? '#f4f6f8' : '#d8dde3');
+		map.setPaintProperty(layer.id, 'text-halo-color', '#0e0e0e');
+		map.setPaintProperty(layer.id, 'text-halo-width', 1);
+	}
 }
 
 function addRegionsLayers(map) {
@@ -221,31 +353,37 @@ function addRegionsLayers(map) {
 	}
 
 	if (!map.getLayer('regions-fill')) {
-		map.addLayer({
-			id: 'regions-fill',
-			type: 'fill',
-			source: 'regions',
-			paint: {
-				'fill-color': scenes[0].fill,
-				'fill-color-transition': { duration: 950, delay: 0 },
-				'fill-opacity': scenes[0].opacity,
-				'fill-opacity-transition': { duration: 950, delay: 0 },
+		map.addLayer(
+			{
+				id: 'regions-fill',
+				type: 'fill',
+				source: 'regions',
+				paint: {
+					'fill-color': scenes[0].fill,
+					'fill-color-transition': { duration: 950, delay: 0 },
+					'fill-opacity': scenes[0].opacity,
+					'fill-opacity-transition': { duration: 950, delay: 0 },
+				},
 			},
-		}, labelLayerId);
+			labelLayerId,
+		);
 	}
 
 	if (!map.getLayer('regions-outline')) {
-		map.addLayer({
-			id: 'regions-outline',
-			type: 'line',
-			source: 'regions',
-			paint: {
-				'line-color': scenes[0].lineColor,
-				'line-color-transition': { duration: 950, delay: 0 },
-				'line-opacity': 0.78,
-				'line-width': 0.8,
+		map.addLayer(
+			{
+				id: 'regions-outline',
+				type: 'line',
+				source: 'regions',
+				paint: {
+					'line-color': scenes[0].lineColor,
+					'line-color-transition': { duration: 950, delay: 0 },
+					'line-opacity': 0.78,
+					'line-width': 0.8,
+				},
 			},
-		}, labelLayerId);
+			labelLayerId,
+		);
 	}
 
 	attachHoverInteractions(map);
@@ -290,8 +428,8 @@ async function activateCompareScene() {
 	compareShell.classList.remove('is-hidden');
 	compareShell.setAttribute('aria-hidden', 'false');
 	await ensureCompareMaps();
-	applySceneToMap(compareBeforeMap, scenes[2]);
-	applySceneToMap(compareAfterMap, scenes[0]);
+	applySceneToMap(compareBeforeMap, scenes[0]);
+	applySceneToMap(compareAfterMap, scenes[2]);
 	compareBeforeMap.resize();
 	compareAfterMap.resize();
 	const isEnhanced = await ensureCompareControl();
@@ -303,7 +441,7 @@ function deactivateCompareScene() {
 	primaryShell.classList.remove('is-hidden');
 	compareShell.classList.add('is-hidden');
 	compareShell.setAttribute('aria-hidden', 'true');
-	compareFallback.hidden = compareControl !== undefined && compareControl !== null;
+	compareFallback.hidden = true;
 	compareBeforeMap?.resize();
 	compareAfterMap?.resize();
 	statusElement.hidden = true;
@@ -322,8 +460,8 @@ async function ensureCompareMaps() {
 	await Promise.all([waitForLoad(compareBeforeMap), waitForLoad(compareAfterMap)]);
 	addRegionsLayers(compareBeforeMap);
 	addRegionsLayers(compareAfterMap);
-	applySceneToMap(compareBeforeMap, scenes[2]);
-	applySceneToMap(compareAfterMap, scenes[0]);
+	applySceneToMap(compareBeforeMap, scenes[0]);
+	applySceneToMap(compareAfterMap, scenes[2]);
 	comparisonContainer.classList.add('is-static');
 	compareFallback.hidden = false;
 }
@@ -350,7 +488,6 @@ async function ensureCompareControl() {
 		return false;
 	}
 }
-
 
 async function loadCompareConstructor() {
 	if (!compareConstructorPromise) {
@@ -433,11 +570,12 @@ function handleResize() {
 	primaryMap?.resize();
 	compareBeforeMap?.resize();
 	compareAfterMap?.resize();
+	scroller?.resize();
 }
 
 function attachMapErrorHandler(map) {
 	map.on('error', () => {
-		showStatus('Basemap tiles or overlay data are unavailable. The scaffold remains in place while sources are being wired.');
+		showStatus('Basemap or overlay data unavailable.');
 	});
 }
 
@@ -477,26 +615,35 @@ async function loadRegions() {
 	}
 }
 
-
 function prepareRegionsData(data) {
 	for (const feature of data.features) {
 		feature.properties ??= {};
-		feature.properties.normalized_gap = calculateNormalizedGap(
+		feature.properties.correlation_score = calculateCorrelationScore(
 			feature.properties.nsdap_pct,
 			feature.properties.afd_pct,
 		);
 	}
 }
 
-// The outro uses the magnitude of the gap after both election shares are normalised to their scene ranges.
-function calculateNormalizedGap(nsdapPct, afdPct) {
-	if (typeof nsdapPct !== 'number' || typeof afdPct !== 'number') {
-		return null;
+function calculateCorrelationScore(nsdapPct, afdPct) {
+	const normalisedHistoric =
+		typeof nsdapPct === 'number' ? clamp(nsdapPct / 100, 0, 1) : null;
+	const normalisedModern =
+		typeof afdPct === 'number' ? clamp(afdPct / 30, 0, 1) : null;
+
+	if (normalisedHistoric !== null && normalisedModern !== null) {
+		return (normalisedHistoric + normalisedModern) / 2;
 	}
 
-	const normalisedHistoric = clamp(nsdapPct / 100, 0, 1);
-	const normalisedModern = clamp(afdPct / 30, 0, 1);
-	return Math.abs(normalisedHistoric - normalisedModern);
+	if (normalisedHistoric !== null) {
+		return normalisedHistoric;
+	}
+
+	if (normalisedModern !== null) {
+		return normalisedModern;
+	}
+
+	return null;
 }
 
 function computeGeoBounds(data) {
@@ -511,11 +658,11 @@ function computeGeoBounds(data) {
 	];
 }
 
-function buildChoroplethExpression(property, maxValue) {
+function buildChoroplethExpression(property, maxValue, missingColour = missingFill) {
 	return [
 		'case',
 		['==', ['get', property], null],
-		noDataFill,
+		missingColour,
 		[
 			'interpolate',
 			['linear'],

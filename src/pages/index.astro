@@ -16,7 +16,7 @@ const steps = [
 	{
 		index: 2,
 		title: 'Germany. 1933.',
-		body: 'The same districts transition to NSDAP vote share in March 1933 using the historical range.',
+		body: 'Regions are coloured by NSDAP vote share in March 1933.',
 	},
 	{
 		index: 3,
@@ -26,7 +26,7 @@ const steps = [
 	{
 		index: 4,
 		title: "Some things change. Some things don't.",
-		body: 'The final view shows the absolute gap between the normalised 1933 and 2025 shares across Germany.',
+		body: 'The final view averages the normalised historical and current values where both exist, and falls back to the single available value otherwise.',
 	},
 ];
 ---
@@ -50,16 +50,15 @@ const steps = [
 		<main id="main-content" tabindex="-1">
 			<section class="landing" aria-labelledby="page-title">
 				<div class="landing__inner">
-					<p class="landing__eyebrow">Same Place</p>
-					<h1 id="page-title">This didn't start somewhere else.</h1>
-					<p class="landing__subtitle">Scroll to explore.</p>
+						<h1 class="landing__title" id="page-title">This didn't start somewhere else.</h1>
+						<p class="landing__prompt">Scroll.</p>
 				</div>
 			</section>
 
-			<section class="story" aria-labelledby="story-heading">
+			<section class="story" aria-labelledby="story-heading" data-story>
 				<h2 class="sr-only" id="story-heading">Scrollytelling narrative</h2>
 				<Map />
-				<div class="story__steps">
+					<div class="story__steps" data-story-steps aria-labelledby="story-heading">
 					{steps.map((step) => <Step {...step} />)}
 				</div>
 			</section>
