@@ -1,13 +1,10 @@
 import * as d3 from 'd3';
 import maplibregl from 'maplibre-gl';
+import compareBundleUrl from '@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.js?url';
 import regionsUrl from '../data/regions.geojson?url';
 
 const baseStyleUrl = 'https://demotiles.maplibre.org/style.json';
 const germanyCenter = [10.4515, 51.1657];
-const compareAssets = {
-	css: 'https://cdn.jsdelivr.net/npm/maplibre-gl-compare@0.4.0/dist/maplibre-gl-compare.css',
-	js: 'https://cdn.jsdelivr.net/npm/maplibre-gl-compare@0.4.0/dist/maplibre-gl-compare.js',
-};
 
 const modernRamp = d3.quantize(
 	d3.interpolateRgbBasis(['#170d0f', '#4d1d22', '#80252e', '#b42f3c', '#e63946']),
@@ -86,7 +83,7 @@ let compareControl;
 let activeSceneIndex = -1;
 let pendingSceneIndex = 0;
 let regionsData = { type: 'FeatureCollection', features: [] };
-let compareAssetsPromise;
+let compareConstructorPromise;
 
 if (
 	primaryShell &&
@@ -296,12 +293,12 @@ async function ensureCompareControl() {
 	}
 
 	try {
-		await ensureCompareAssets();
-		if (!window.maplibregl?.Compare) {
+		const Compare = await loadCompareConstructor();
+		if (!Compare) {
 			return false;
 		}
 
-		compareControl = new window.maplibregl.Compare(compareBeforeMap, compareAfterMap, comparisonContainer, {
+		compareControl = new Compare(compareBeforeMap, compareAfterMap, comparisonContainer, {
 			orientation: 'vertical',
 		});
 		comparisonContainer.classList.remove('is-static');
@@ -312,20 +309,22 @@ async function ensureCompareControl() {
 	}
 }
 
-function ensureCompareAssets() {
-	if (compareAssetsPromise) {
-		return compareAssetsPromise;
+
+async function loadCompareConstructor() {
+	if (!compareConstructorPromise) {
+		compareConstructorPromise = loadCompareScript(compareBundleUrl).then(() => {
+			const Compare = window.maplibregl?.Compare;
+			if (!Compare) {
+				throw new Error('Compare constructor missing from @maplibre/maplibre-gl-compare');
+			}
+			return Compare;
+		});
 	}
 
-	compareAssetsPromise = Promise.all([
-		loadStylesheet(compareAssets.css),
-		loadScript(compareAssets.js),
-	]).then(() => undefined);
-
-	return compareAssetsPromise;
+	return compareConstructorPromise;
 }
 
-function loadScript(source) {
+function loadCompareScript(source) {
 	return new Promise((resolve, reject) => {
 		const existing = document.querySelector(`script[src="${source}"]`);
 		if (existing) {
@@ -339,23 +338,6 @@ function loadScript(source) {
 		script.onload = () => resolve();
 		script.onerror = () => reject(new Error(`Unable to load ${source}`));
 		document.head.append(script);
-	});
-}
-
-function loadStylesheet(source) {
-	return new Promise((resolve, reject) => {
-		const existing = document.querySelector(`link[href="${source}"]`);
-		if (existing) {
-			resolve();
-			return;
-		}
-
-		const link = document.createElement('link');
-		link.rel = 'stylesheet';
-		link.href = source;
-		link.onload = () => resolve();
-		link.onerror = () => reject(new Error(`Unable to load ${source}`));
-		document.head.append(link);
 	});
 }
 

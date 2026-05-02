@@ -38,3 +38,7 @@ The comparison scene is scaffolded to enhance with `maplibre-gl-compare` on the 
 ## Licence
 
 The code scaffold is released under the MIT licence. Source datasets retain their own licences and attribution requirements.
+
+## Package notes
+
+The comparison scene uses `@maplibre/maplibre-gl-compare` as a local dependency. The project includes a scoped `.npmrc` entry so the `@maplibre` packages resolve from npmjs even if your wider environment defaults to a private registry.
