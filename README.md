@@ -1,37 +1,40 @@
 # Same Place
 
-An interactive data visualization mapping 90 years of far-right 
-support in Germany — from Nazi vote share in 1933 to today.
+Same Place is a scrollytelling web project about the persistence of far-right support in Germany. This repository currently contains the initial scaffold: a dark Astro front end, a sticky MapLibre stage, Intersection Observer scene triggers, placeholder data files, and Python entry points for the later data pipeline.
 
-## Data Sources
+## Current status
 
-- NSDAP election results 1933: GESIS — Leibniz Institute for 
-  the Social Sciences
-- AfD election results 2025: Federal Returning Officer 
-  (Bundeswahlleiter)
-- Right-wing incidents: Amadeu Antonio Foundation + 
-  Federal Criminal Police Office (BKA)
+- All data files are placeholders for now.
+- The regional geometry source is an empty GeoJSON `FeatureCollection`.
+- The five-step story flow, sticky layout, and map state transitions are wired so real data can be dropped in later.
 
-## Methodology
+## Data sources
 
-Regional boundaries have shifted significantly since 1933. 
-We aggregate data to modern Kreise (districts) using the 
-mapping approach from Voigtländer & Voth (2012), 
-"Persecutions of Jews and Nazi Violence".
+- GESIS for the historical 1933 election material.
+- Der Bundeswahlleiter for contemporary federal election results.
+- Amadeu Antonio Stiftung for right-wing incident reporting.
 
-## Academic References
+## Methodology note
 
-- Voigtländer, N., & Voth, H. J. (2012). Persecution perpetuated.
-- Cantoni, D. et al. (2019). Persistence and Activation of 
-  Right-Wing Political Ideology.
+Historical and modern regional boundaries do not line up directly. The intended processing pipeline will map historical results onto modern regional units while keeping each transformation explicit. The aggregation approach is informed by Voigtländer & Voth (2012) and will be documented in more detail once the real processing logic is added.
 
-## Built With
+## Tech stack
 
 - Astro
 - MapLibre GL JS
 - D3.js
-- Turf.js
+- Vanilla JavaScript with Intersection Observer
+- Python for data preparation scripts
 
-## License
+## Development
 
-MIT — data sources retain their own licenses.
+```bash
+pnpm install
+pnpm run dev
+```
+
+The comparison scene is scaffolded to enhance with `maplibre-gl-compare` on the client. If the plugin cannot be fetched in the browser, the project falls back to a static split placeholder so the rest of the story still runs.
+
+## Licence
+
+The code scaffold is released under the MIT licence. Source datasets retain their own licences and attribution requirements.

@@ -1,17 +1,68 @@
 ---
+import Map from '../components/Map.astro';
+import Step from '../components/Step.astro';
+import '../styles/global.css';
 
+const steps = [
+	{
+		index: 0,
+		title: 'Germany. Today.',
+		body: 'A placeholder contemporary choropleth scaffold sits here, ready for regional election and incident data.',
+	},
+	{
+		index: 1,
+		title: 'Has it always been like this?',
+	},
+	{
+		index: 2,
+		title: 'Germany. 1933.',
+		body: 'The map shifts to a historical placeholder state, reserving space for regional NSDAP vote share once the merged dataset is ready.',
+	},
+	{
+		index: 3,
+		title: 'Then and now.',
+		body: 'A split comparison view holds the place for a swipeable 1933 versus 2025 contrast.',
+	},
+	{
+		index: 4,
+		title: "Some things change. Some things don't.",
+		body: 'The story resolves to a full-country view, ready for the final merged layers and annotations.',
+	},
+];
 ---
 
-<html lang="en">
+<!doctype html>
+<html lang="en-GB">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<meta
+			name="description"
+			content="Same Place is a scrollytelling prototype exploring continuity in far-right support across Germany."
+		/>
+		<title>Same Place</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<a class="skip-link" href="#main-content">Skip to main content</a>
+		<main id="main-content" tabindex="-1">
+			<section class="landing" aria-labelledby="page-title">
+				<div class="landing__inner">
+					<p class="landing__eyebrow">Same Place</p>
+					<h1 id="page-title">This didn't start somewhere else.</h1>
+					<p class="landing__subtitle">Scroll to explore.</p>
+				</div>
+			</section>
+
+			<section class="story" aria-labelledby="story-heading">
+				<h2 class="sr-only" id="story-heading">Scrollytelling narrative</h2>
+				<Map />
+				<div class="story__steps">
+					{steps.map((step) => <Step {...step} />)}
+				</div>
+			</section>
+		</main>
 	</body>
 </html>

@@ -1,0 +1,16 @@
+---
+interface Props {
+	index: number;
+	title: string;
+	body?: string;
+}
+
+const { index, title, body } = Astro.props;
+const headingId = `step-title-${index}`;
+---
+
+<article class="step" data-step={index} aria-labelledby={headingId}>
+	<p class="step__eyebrow">Scene {index + 1}</p>
+	<h2 class="step__title" id={headingId}>{title}</h2>
+	{body && <p class="step__body">{body}</p>}
+</article>

@@ -1,0 +1,32 @@
+---
+import DataPanel from './DataPanel.astro';
+import scrollytellingUrl from '../scripts/scrollytelling.js?url';
+---
+
+<aside class="story__map-column" aria-label="Sticky map stage">
+	<div class="map-stage">
+		<div class="map-shell">
+			<div class="map-surface" data-primary-shell>
+				<div class="map-canvas" data-map></div>
+			</div>
+
+			<div class="map-surface map-compare is-hidden" data-compare-shell aria-hidden="true">
+				<div class="map-compare__frame is-static" data-comparison-container>
+					<div class="map-canvas map-canvas--compare" data-compare-before></div>
+					<div class="map-canvas map-canvas--compare" data-compare-after></div>
+					<span class="map-compare__label map-compare__label--before">1933</span>
+					<span class="map-compare__label map-compare__label--after">2025</span>
+				</div>
+				<p class="map-compare__fallback" data-compare-fallback>
+					Static split placeholder. The official slider enhances this view when the compare plugin is reachable.
+				</p>
+			</div>
+
+			<p class="map-status" data-map-status hidden></p>
+		</div>
+
+		<DataPanel />
+	</div>
+</aside>
+
+<script type="module" src={scrollytellingUrl}></script>
